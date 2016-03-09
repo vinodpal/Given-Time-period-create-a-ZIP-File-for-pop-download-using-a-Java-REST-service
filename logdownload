@@ -1,0 +1,48 @@
+/// API Call by User side
+
+	@GET
+	@Path("/do/log/download")
+	@Produces("application/vnd.zip")
+	public Response logdownload(@QueryParam("sd") String stdate,@QueryParam("ed") String eddate
+			) throws Exception {
+		File result=null;
+		FindLoggerBetweenDate cal = new FindLoggerBetweenDate();
+		try {
+			try{
+				result =cal.createZip(stdate+":"+eddate);
+			}catch(Exception exception){
+				result = null;
+				System.out.println("RESULT ERROR : " +result.toString());
+			}
+			ResponseBuilder rBuild = Response.status(Response.Status.OK)
+					.header("Access-Control-Allow-Origin", "*");
+			rBuild.header("Content-Disposition", "attachment; filename="+result.getName());
+			return rBuild.type("application/zip").entity(result).build();
+		} catch (Exception exception) {
+			ResponseBuilder rBuild = Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+					.header("Access-Control-Allow-Origin", "*");
+			return rBuild.type(MediaType.APPLICATION_JSON)
+					.entity(exception.toString()).build();
+		}finally{
+			deletefile(result);
+		}
+	}
+}
+
+//Delete File 100 ms time period
+public void deletefile(final File file){
+	try{
+		Timer timer = new Timer();
+        timer.schedule( new TimerTask(){
+           public void run() {
+        	   
+        	   if(file.exists()){
+        		   file.delete();
+        	   }
+        	  
+           }
+         },100);
+		}catch(Exception ex){
+		
+	}
+
