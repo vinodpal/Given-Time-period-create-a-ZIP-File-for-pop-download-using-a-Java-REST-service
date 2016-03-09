@@ -1,0 +1,94 @@
+import java.io.File;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.apache.log4j.Logger;
+
+import net.lingala.zip4j.core.ZipFile;
+import net.lingala.zip4j.exception.ZipException;
+import net.lingala.zip4j.model.ZipParameters;
+import net.lingala.zip4j.util.Zip4jConstants;
+ 
+public class FindLoggerBetweenDate
+{
+	static Logger logger = Logger.getLogger(FindLoggerBetweenDate.class);
+	
+  public File createZip(String dates) throws ParseException, ZipException{
+    	try {
+    		int flag=0;
+  			//dirName get by default temp directory of OS!
+	    	String dirName = System.getProperty("java.io.tmpdir");
+  			File zipFilePath=null;
+  			String catalina_home="/home/nanobi/devSetup/apache-tomcat-7.0.59";//System.getenv("CATALINA_HOME");
+  			/*catalina_home=catalina_home.contains("/")==true?catalina_home+ "/ApplicationLogs/":catalina_home+ "\\ApplicationLogs\\";*/
+  			if(catalina_home!=null && catalina_home.contains("/")==true){
+  				catalina_home=catalina_home+ "/ApplicationLogs/";
+  				flag=1;
+  				zipFilePath=new File(dirName+"/"+dates+".zip");
+  			}else{ 
+  				catalina_home=catalina_home+ "\\ApplicationLogs\\";
+  				zipFilePath=new File(dirName+"\\"+dates+".zip");
+  			}
+  			//This is name and path of zip file to be created
+  	    	ZipFile zipFile = new ZipFile(zipFilePath);
+  			//Add files to be archived into zip file
+  			ArrayList<File> filesToAdd = new ArrayList<File>();
+  			//Initiate Zip Parameters which define various properties
+  			ZipParameters parameters = new ZipParameters();
+  			//Set compression method to deflate compression
+  			parameters.setCompressionMethod(Zip4jConstants.COMP_DEFLATE);
+  			parameters.setCompressionLevel(Zip4jConstants.DEFLATE_LEVEL_ULTRA); 
+  			//For Parse of file name using Pattern   
+  			Pattern pattern = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+ 			Date pastDate = null;
+ 			Date currentDate = null;
+ 			try{
+ 				String[] singleDate=dates.split(":");
+ 				pastDate = findDate(singleDate[0]);
+ 				currentDate = findDate(singleDate[1]);}
+ 			catch (Exception e){
+ 	        	 ///return e.getMessage();
+ 	         }
+ 			File fileFiles = new File(catalina_home);
+ 			String[] listofFiles = fileFiles.list();
+ 			for(String file : listofFiles){
+ 				Matcher mtc = pattern.matcher(file);
+ 				try{
+ 						if(mtc.find()){
+ 							Date fileDate= formatter.parse(mtc.group(0).toString());
+ 							if( pastDate.compareTo(fileDate) >= 0 && currentDate.compareTo(fileDate) <=0){
+ 								if(flag==1)
+ 									file = fileFiles+"/"+file;
+ 								else file = fileFiles+"\\"+file;
+ 									filesToAdd.add(new File(file));
+ 							}
+ 						}
+ 				}catch(Exception e){
+ 						logger.error("ParseException during the Date parse",e);
+ 				}
+ 			}
+ 			zipFile.addFiles(filesToAdd, parameters);
+ 			return zipFilePath;
+         }catch (ZipException exception){
+        	 logger.error("",exception);
+         }
+		return null;
+    }
+   public Date findDate(String date) throws Exception{
+    	Pattern pattern = Pattern.compile("\\d{4}-\\d{2}-\\d{2}");
+		Date resultDate = null;
+		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+    	if(date != null){
+				Matcher dateMatcher = pattern.matcher(date);
+				if(dateMatcher.find())
+					resultDate = formatter.parse(dateMatcher.group(0).toString());
+		}else {
+				throw new RuntimeException("Please a proper Date or Days!!!");
+		}return resultDate;
+   }
+}
